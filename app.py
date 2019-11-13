@@ -1,18 +1,26 @@
+import urllib
 from datetime import datetime
 
 import flask
 from mongoengine import *
-
 from flask import Flask, request, jsonify
+import pymongo
+from pymongo import MongoClient
 
 from Models.Author import Author
+from Models.User import User
 from Models.Wisdom import Wisdom
 
 import requests
 
-connect('Wiser')
-
 app = Flask(__name__)
+
+connect("Wiser")
+
+client = MongoClient("mongodb+srv://mongo:Sam@wiser-lbllc.azure.mongodb.net/test?retryWrites=true&w=majority")
+db = client.get_database('Wiser')
+wisdomCollection = db['Wisdom']
+
 # Create
 @app.route('/wisdom/create', methods=['POST'])
 def createWisdom():
@@ -20,14 +28,15 @@ def createWisdom():
     wisdomToSave = Wisdom()
     wisdomToSave.content = wisdomAsJson['content']
     wisdomToSave.authorID = wisdomAsJson['authorID']
-    wisdomToSave.save()
-    wisdomToSave.save()
-    return str(Wisdom.objects(id = wisdomToSave.id).first().id)
+    inserted_id = wisdomCollection.insert_one(wisdomToSave.__dict__).inserted_id
+    return str(wisdomCollection.find_one({"_id": inserted_id})['_id'])
+    # wisdomToSave.save()
+    # return str(Wisdom.objects(id = wisdomToSave.id).first().id)
 # Read - Detail
 @app.route('/wisdom/details', methods=['GET'])
 def getSingleWisdom():
-    id = request.args.get('id', type = str)
-    return Wisdom.objects(id = id).first().content
+    name = request.args.get('name', type = str)
+    return dict(wisdomCollection.find({"authorName":str(name)}))
 
 # Read - List
 @app.route('/wisdom/list', methods=['GET'])
